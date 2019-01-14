@@ -1,0 +1,1 @@
+structure RealVectorSlice = Real64VectorSlice

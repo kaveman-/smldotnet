@@ -1,0 +1,24 @@
+Group is
+   $/basis.cm
+   $/smlnj-lib.cm (* SML/NJ extras *)
+   ../sort/sources.cm
+   GRAPH.sig
+   Graph.sml
+   STRONGCOMPONENTS.sig
+   StrongComponents.sml
+   DLIST.sig
+   DList.sml
+   GREEDY.sig
+   Greedy.sml
+   Partition.sml
+   PARTITION.sig
+   OrthogonalPartition.sml
+   ORTHOGONALPARTITION.sig
+   DFS.sig
+   DFS.sml
+   WSArcs.sml
+   WSARCS.sig
+   HPath.sml
+   HPATH.sig
+   DOMINATOR.sig
+   Dominator.sml

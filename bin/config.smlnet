@@ -1,0 +1,19 @@
+reference mscorlib.dll, Accessibility.dll, System.Configuration.Install.dll,
+  System.Data.dll, System.DirectoryServices.dll, System.dll,
+  System.Drawing.dll, System.EnterpriseServices.dll,
+  System.Management.dll, System.Messaging.dll, 
+  System.Runtime.Remoting.dll, System.Runtime.Serialization.Formatters.Soap.dll,
+  System.Security.dll, System.ServiceProcess.dll, 
+  System.Web.RegularExpressions.dll
+
+(* Turn off various buggy optimizations *)
+off hoistLocalFun 
+off floatCmp
+off floatCast
+off floatHigherFun
+on codegen.verify
+on codegen.showilasm
+off deadargs
+off case.expand
+
+

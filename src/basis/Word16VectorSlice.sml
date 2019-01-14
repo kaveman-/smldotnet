@@ -1,0 +1,1 @@
+structure Word16VectorSlice = VectorSliceFun_(type elem = Word16.word)

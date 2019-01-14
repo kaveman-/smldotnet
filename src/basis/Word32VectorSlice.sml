@@ -1,0 +1,1 @@
+structure Word32VectorSlice = VectorSliceFun_(type elem = Word32.word)

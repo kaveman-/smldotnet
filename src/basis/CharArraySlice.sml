@@ -1,0 +1,1 @@
+structure CharArraySlice = ArraySliceFun_(structure VectorSlice = CharVectorSlice)

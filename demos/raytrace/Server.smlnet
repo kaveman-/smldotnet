@@ -1,0 +1,4 @@
+source .,icfp
+out Server.dll
+export Server,Classes
+make

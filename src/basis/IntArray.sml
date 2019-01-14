@@ -1,0 +1,1 @@
+structure IntArray = Int32Array

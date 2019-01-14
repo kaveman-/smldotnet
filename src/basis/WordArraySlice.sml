@@ -1,0 +1,1 @@
+structure WordArraySlice = Word32ArraySlice

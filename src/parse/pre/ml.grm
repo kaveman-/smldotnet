@@ -1,0 +1,1505 @@
+(* Deviations from the standard.
+   1. Interop extensions.  These involve extra productions for attyp,
+      decitemp, specitemp, as well as new terms.
+     
+      It is assumed that in Andrew's syntax,
+         id == vid
+
+   2. longvid s may have spaces between the names and the dots.
+      This is like SML/NJ and for the same reason; namely we
+      sort them out here rather than in the lexer.
+     
+      This is arguably an improvement in the language, since it allows
+      you to construct arbitrarily long paths without having to put them
+      all on the same line.
+   3. The 
+         dec ::= "val" tyvarseq valbind
+      and
+         valbind ::= "rec" valbind
+      productions are replaced by
+         dec ::= "val" tyvarseq valbind
+         dec ::= "val" tyvarseq "rec" valbind
+      So recs can only occur in the obvious place.  
+      This also appears to be what NJ does
+   4. We do not resolve fixity at this stage.  This means certain
+      productions have to be changed.
+
+      The non-terminals appexp and infexp do not appear.
+      The production
+         exp::=infexp
+      is replaced by
+         exp::=atexp_spaced
+      (where XXXs_spaced is defined by
+         XXXs_spaced::=XXX
+         XXXs_spaced::=XXX XXXs_spaced
+         )
+
+      The productions
+         pat::=atpat
+         pat::=<op>longvid atpat
+         pat::=pat1 vid pat2
+
+      are replaced by
+         pat::=atpats_spaced
+
+    
+      In general, the attitude is to do as little about fixity as
+      possible.  For example we could observe that a sequence of
+      2 expressions must be a function application, but it seems better
+      to do all fixity checking in one place so that the error messages
+      are consistent.
+   5. The productions for spec ::= datatype [blah]
+      are deleted and replaced by the datatype productions for
+      decitem.  This has the useful consequence that datatypes in 
+      signatures can have WITHTYPE, and the less useful one that the
+      constructor can be qualified with op.
+   6. In type declarations declaring several types in a signature,
+      some of the types may be declared equal to types while others
+      may not, though technically I think we should reject this.
+      EG:
+signature S=
+sig
+  type 'a t
+  and u = int
+end
+
+      It would be easy to change this, but in my view pointless,
+      since I can't believe the definition really means this.
+      SML/NJ agrees with me.
+   7. SHARING and SHARING TYPE are implemented as separate spec items.
+      This doesn't really seem to affect anything.  The syntax for sharing 
+      is pretty stupid; there is no way of knowing how much is covered
+      by the sharing.  (Without the semicolon, in the above example the
+      spec could cover A and B or only B or neither).  I presume that
+      Andrew will make a sharing declaration cover everything before it
+      in the signature, which means this is OK.
+   
+      We also assume k>=2 in the derived form for 
+      spec::=spec sharing longstrid1 = . . . = longstridk
+      since k=1 makes no sense (and is not accepted by New Jersey).
+   8. We allow let dec in exp;exp;...;exp end
+      (Like New Jersey)
+   9. We allow New Jersey style OR patterns.
+   10.We don't check that in a function declaration the names of the
+      function and the number of patterns are all identical (this would
+      require fixity checking for one thing).  So we cannot use this
+      information to resolve conflicts with CASE and HANDLE.
+   11."op =" is permitted in patterns.  This is an extension
+      to allow Andrew to define = in the basis.   
+
+   Productions different but equivalent to the standard.
+   1. Various non-terminals come in two forms, one having an extra "p" suffix.
+      For example, corresponding to the nonterminal atexp
+      in the standard we have atexpp and atexp. 
+      The difference is that the p nonterminals do not have
+      locations attached to them, while the non-p nonterminals do.
+   2. The empty production for dec and the production dec::=dec1 ; dec2
+      are deleted.  The others are replaced by productions for decitemp
+      (which is equivalent to decitem but without a location).  New
+      productions for dec are:
+         dec := <empty>
+         dec := SEMICOLON dec
+         dec := decitem dec
+   3. Numerous productions are added for things not spelt out in
+      BNF form in the standard (eg "vid1 ... vidn") and so on.
+      Bit off really - why didn't they do it properly?
+   4. patrows are allowed to be empty, and the option on it in the
+      production atpat ::= { <patrow> } is omitted.
+   5. The precedence of patterns and types is made explicit.
+      The production
+         pat := <op>vid<:ty> as pat
+      is handled specially.  We make <op>vid as pat bind at a low level.
+      <op>vid:ty as pat
+      needs a higher precedence because <pat>:ty is allowed.  So we
+      allow <pat>:ty as pat (with precedences inserted) by
+      reconstructing the first pattern with the layer at the lowest level,
+      using the layerpat function.
+   6. New syntax classes vidpat, longvidpat, oplongvidpat are created.
+      A vidpat is a vid not an equals sign.  We ban equals signs
+      from almost all positions in patterns (to make parsing easier).
+      The only exception is in lab = pat, where lab may be =
+      (as permitted by the standard) and of course the = must be =.
+      It is forbidden by the standard to rebind =, so we may assume
+      that = cannot be in a bound position in a pattern, nor can it
+      be in a constructor position (since = is not a constructor and
+      cannot be made one).
+   7. A new class tyvar1seq is introduced, identical to tyvarseq
+      except that it does not contain the empty string.
+      The productions for dec:
+         val tyvarseq valbind
+         val tyvarseq rec valbind
+         fun tyvarseq valbind
+      are each replaced by two productions, one in which tyvarseq is
+      changed to tyvar1seq, and one in which tyvarseq is replaced by
+      the empty string.
+
+   8. New classes atty, attyc, tytuple are introduced, to avoid
+      shift reduce conflicts and get the right precedences.
+      The productions for these are:
+          atty ::= TYVAR
+          atty ::= LBRACE tyrow RBRACE
+          atty ::= LPAREN ty RPAREN
+
+          attyc ::= atty
+          attyc ::= LPAREN ty COMMA ty commatyseq RPAREN longtycon
+          attyc ::= attyc longtycon
+
+          tytuple ::= attyc
+          tytuple ::= attyc ASTERISK tytupl
+
+      The productions for ty are replaced by:
+          ty ::= tytuple
+          ty ::= tytuple ARROW ty
+
+      (commatyseq would be needed anyway and is defined by
+          commatyseq ::= <empty>
+          commatyseq ::= COMMA ty commatyseq
+      )
+   
+   9. The derived form
+      sigexp ::= sigexp WHERE TYPE [blah] AND TYPE [blah] . . . 
+      caused grief because it gives a shift/reduce conflict
+      with (for example)
+signature A=B where type a=b and
+      Here, with the rules provided, we cannot work out what to
+      do with and.  If followed by TYPE, we know it must be
+      part of the sigexp, otherwise it must be part of the
+      signature ... and C=D.
+      (This is an open bug in New Jersey - see a message by Dave MacQueen
+       in comp.lang.ml).
+
+      SOLUTION.  We add new classes  
+         strexpand
+         strexpandp
+         strbinditemand
+         sigexpwand
+         sigexpand
+         strdescitemand
+         sigbinditemand
+         funbinditemand
+      to be used instead of strexp, strexpp, strbinditem, sigexpw, sigexp,
+      strdescitem, sigbinditem (respectively).  Each one contains an extra
+      AND and is used wherever and AND can follow.  This stops AND appearing
+      in the follow set for sigexp.
+      
+*)
+open Syntax
+
+val SAS=Symbol.symbolAsciiString
+val bad_symbol=SAS("????")
+val bad_tyvar=SAS("`????")
+
+val asterisk=SAS("*")
+val equalop=SAS("=")
+
+(* Symbol forms of ML reserved words. *)
+val ClasstypeS = SAS "classtype"
+val SynchronizedS = SAS "synchronized"
+val InterfacetypeS = SAS "interfacetype"
+val UnlessS = SAS "unless"
+val InterfaceS = SAS "interface"
+
+fun ERROR(l,r,mess)=LexState.err(Error.error({left=l,right=r},mess))
+fun WARN(l,r,mess)=LexState.err(Error.warning({left=l,right=r},mess))
+
+fun infix_check(left,right,s)=
+(* Checks whether an infix digit with boundaries left and right
+   has the right size; if not returns ~1.
+   *)
+   if right-left>1
+   then
+      ~1
+   else
+      (case Int.fromString s of SOME i => i)
+
+
+fun infix_check2(left,right,i)=
+(* Given result of infix_check, and the right and left boundaries of
+   the INFIX/INFIXR keyword, returns digit, or if there is an error
+   and the keyword was not inserted returns 9 and produces an 
+   error message. *)
+   if i>=0
+   then
+      i
+   else
+     (if left<right
+      then
+         ERROR(left,right,"Precedence must be a single decimal digit")
+      else
+         ()
+      ;
+      9
+      )
+   
+fun forceopvid(x:OpLongVid,l,r)=
+(* Force a oplongvid to an opvid, producing an error message if
+   it can't be done.  l and r give the region of the oplongvid. *)
+   (case x of
+      Short s => (false,s)
+   |  OpShort s => (true,s)
+   |  _ => 
+      (ERROR(l,r,"Illegal structure reference");
+      (false,bad_symbol))
+   )
+
+fun forcepatopvid(l,r,x,b)=
+(* Force x to be an opvid or return a dummy and if b is true 
+   give an error message *)
+
+   (case x of
+      PatVar y => forceopvid(y,l,r)
+   |  _ =>
+      (if b then ERROR(l,r,"Pattern to left of AS not a variable") else ();
+       (false,bad_symbol))
+   )        
+   
+
+fun mtuple(x:Ty list,l,r)=
+(* Turn x into a type where x is a tuple list of length 1 or more *)
+   (case x of
+      [x] => x
+   |  _   => ({left=l,right=r},TyTuple x)
+   )
+
+val nobound={explicit=[],implicit=[]}
+
+fun ASerror(l,r)=
+(* complain about the AS from l to r. *)
+   if l+2=r 
+   then
+      ERROR(l,r,"AS does not follow a variable")
+   else (* don't bother, the AS was inserted *)
+      () 
+
+exception LayerPat
+
+fun layerpat(lpat:PrePat,tyo:Ty option,rpat as ({right,...},_):Pat,l:int,r:int)
+      :PrePat=
+(* This function is used for the pat COLON ty AS pat and pat AS pat
+   case, where we need to split off the rightmost vid in the left
+   pattern and replace it by a layered pattern. 
+   We do this, returning the whole pattern as modified.  If there is
+   an error we return the original left pattern and, if
+   l+2=r prints an error message complaining about the AS 
+   from position l to r.  (Otherwise the AS is inappropriate.) *)
+let
+   fun lp(lpat:PrePat)= (* Similar to layerpat without the arguments and
+                           raises LayerPat if there's an error. *)
+   (case lpat of
+      PatVar(Short vid) =>
+         PatLayer((false,vid),tyo,rpat)
+   |  PatVar(OpShort vid) =>
+         PatLayer((true,vid),tyo,rpat)
+   |  FlatPat pl => FlatPat(lpp_list pl)
+   |  OrPat pl => OrPat(lpp_list pl)
+   |  _ => raise LayerPat
+   )
+   and lpp(pat as ({left,...},ppat):Pat)= 
+      (* Similar to lp but operates on pats instead *)
+      ({left=left,right=right},lp ppat)
+   and lpp_list(pl:Pat list)= 
+   (* like lpp but operates on a list of patterns of length at least 1,
+      and applies lpp to the last element. *)
+   (case pl of
+      [p] => [lpp p]
+   |  h::t => h::(lpp_list t)
+   )
+in
+   lp lpat handle LayerPat =>
+     (ASerror(l,r)
+      ;
+      lpat
+      )
+end
+   
+       
+%%
+
+%name ML
+%verbose (* only needed for development purposes but shouldn't change output *)
+%start start
+%eop EOF
+
+%pos FilePosition.pos
+
+(* This is where we define ML tokens and nonterms. *)
+%term 
+(* Copied (with changes) from SML/NJ source *)
+      BAD (* This should not happen! *)
+    | EOF | SEMICOLON
+    | SCON of SCon.SCon 
+    (* Used for all constants except digit sequences not beginning with 0
+       and strings.  Digit sequences not beginning with 0 may be
+       record labels and strings may be types. *)
+    | INTLAB of string (* digit sequences not starting with 0 *)
+    | ALPHA of Syntax.symbol (* Alphabetic identifiers *)
+    | SYMBOLIC of Syntax.symbol (* Symbolic identifiers *)
+    | TYVAR of Syntax.symbol (* we don't include the quote *)
+    | ABSTYPE | AND
+    | ARROW | AS | BAR | CASE | DATATYPE | DOTDOTDOT | ELSE | END | EQUALOP
+    | EQTYPE | EXCEPTION | DO | DOT | DOTS | DARROW | FN | FUN | FUNCTOR 
+    | HANDLE | HASH | IF | IN | INCLUDE | INFIX | INFIXR | LAZY | LET | LOCAL 
+    | NONFIX | OF 
+    | OP | OPEN | RAISE | REC | SHARING | SIG | SIGNATURE | STRUCT
+    | STRUCTURE | THEN | TYPE | VAL | WHERE | WHILE | WILD | WITH | WITHTYPE 
+    | ASTERISK | COLON | COLONGT | COMMA | LBRACE | LBRACKET | LPAREN | RBRACE 
+    | RBRACKET | RPAREN | ORELSE | ANDALSO
+(* Interop reserved words *)
+    | CLASSTYPE | INTERFACETYPE | SYNCHRONIZED | PURE | UNLESS
+    | DOTHASH
+    | DOTHASHHASH
+    | UNDERLINEID of Syntax.symbol 
+    (* id beginning with _, only permitted as the last component of a 
+       long id *)
+%nonterm
+      scon of SCon.SCon
+    | vid of symbol
+    | vidpat of symbol (* any vid except = *)
+    | opvid of bool*symbol (* Where it matters if its op'd *)
+    | opvidpat of bool*symbol (* ditto *)
+
+    | oplongvid of OpLongVid (* May also include field and method names *)
+    | lvend of symbol list (* (DOT ALPHA)*(DOT vid) *)
+    | oplongvidpat of OpLongVid (* May not contain field and method names *)
+    | lvpatend of symbol list (* (DOT ALPHA)*(DOT vidpat) *)
+
+    | vids_spaced of symbol list (* vids separated by spaces (EG in open) *)
+    | tycon of symbol
+    | longtycon of symbol list
+    | lab of symbol
+    | fieldname of symbol 
+    | strid of symbol
+    | longstrid of symbol list
+    | longstrids_spaced of symbol list list
+    | funid of symbol
+    | sigid of symbol
+
+(* atexpp and so on indicates a pre form *)
+    | atexpp of PreExp
+    | atexp  of Exp
+
+    | expp of PreExp
+    | exp of Exp
+
+
+    | exprow of (symbol * Exp) list
+    | exprowitem of (symbol * Exp)
+    (* Zero or more COMMA exp *)
+    | commaexp of Exp list
+    (* 1 or more expressions separated by commas *)
+    | exp1commarow of Exp list
+(* Ditto 2 *)
+    | exp2commarow of Exp list
+  
+(* 1 or more expressions separated by semicolons *)
+    | expsemirow of Exp list
+(* 2 or more expressions separated by semicolons *)
+    | exp2semirow of Exp list
+
+    | flat2exp of Exp list
+(* Sequence of at least atexps, to be resolved by fixity/constructors *)
+   
+    | mrule of MRule
+    | match of Match
+
+    | decitempl of PreDecItem (* all atom declarations except LOCAL *)
+    | decitemp of PreDecItem
+    | decitem of DecItem
+    | dec of Dec
+
+    | valbind of (Pat * Exp) list
+    | valbinditem of Pat * Exp
+
+    | fvalbind of (FlatFValBindItem list list)
+    | fvalbinditem of FlatFValBindItem list (* one function *)
+    | fvalbinditemitem of FlatFValBindItem (* one clause in one function *)
+
+    | typbinditem of (symbol list * symbol * Ty)
+    | typbind of (TypBind)
+
+    | datbind of DatBind
+    | datbinditem of symbol list * symbol * (ConBind list)
+    | conbind of (OpVid * Ty option) list
+    | conbinditem of OpVid * Ty option
+
+    | exbind of (OpVid*ExBind) list
+    | exbinditem of (OpVid*ExBind)
+    | infix_digit of int (* Negative if there's an error *)
+
+    | tyvarseq of symbol list
+    | tyvar1seq of symbol list
+    | boundtyvar1seq of BoundTyVars
+    | tyvarrow of symbol list
+    
+    | atpat of Pat
+    | atpats_spaced of Pat list
+
+    | atpatwildp of symbol
+    | atpatwild of Pat*Pat 
+    (* An interop reserved word to be interpreted as a WILD pat *)
+
+   
+    | atpatp of PrePat
+    | atpat2p of PrePat
+    | atpat3p of PrePat
+    | atpat3 of Pat
+    | atpat3bar of Pat list
+    | patp of PrePat
+    | pat of Pat
+
+    | patrow of bool*((symbol*Pat) list)
+    | patrowitem of symbol*Pat
+    | patrowitemp of symbol*PrePat
+    | commapatseq of Pat list (* zero or more repetitions of COMMA pat *)
+
+    | ty of Ty
+
+    | atty of Ty
+    | attyp of PreTy
+
+    | attyc of Ty
+
+    | tytupl of Ty list (* tytupl is a single type or a tuple of types.  
+                           a tytuple only made into one type *)
+    | tytuple of Ty
+     
+    | commatyseq of Ty list (* zero or more repetitions of COMMA ty *)
+    | tyrow of (symbol*Ty) list
+    | tyrowitem of symbol*Ty
+    | classdec of ClassDec
+    | classdesc of ClassDesc
+    | tyopt of Ty option
+    | classlocal of Dec
+    | inherititem of Inherits
+    | inheritlist of Inherits list
+    | inherits of Inherits list
+    | descinheritlist of Ty list
+    | descinherits of Ty list
+
+    | args of Exp list
+    (* one expression, or multiple expressions separated by commas in
+       parentheses *)
+    
+    | implements of Ty list
+    | strexpcom of PreStrExp
+    | strexp of StrExp
+    | strexpp of PreStrExp
+
+    | strexpand of StrExp
+    | strexpandp of PreStrExp
+    (* strexpand means strexp followed by AND.  A strexp should
+       never be followed by AND except as part of strexpand. *)
+
+    
+
+    | strdec of Dec
+    | strdecarg of Dec 
+    (* Like strdec, but used for functor arguments.  There is no
+       difference, except that strdec accepts (and prints error
+       messages for) extra RPARENs.  *)
+    | strdecitemp of PreDecItem
+    | strdecitem of DecItem
+    | sigdecitemp of PreDecItem
+    | sigdecitem of DecItem
+
+    | strbind of StrBind list
+    | strbinditem of StrBind
+    | strbinditemand of StrBind
+    | sigexp of SigExp
+    | sigexpp of PreSigExp
+    | sigexpwp of PreSigExp 
+    | sigexpw of SigExp
+    (* sigexpp doesn't contain WHERE TYPE. sigexpwp and sigexpw must. *)
+    | sigexpwand of SigExp
+
+    | sigexpand of SigExp
+    (* sigexpand means sigexp followed by AND.  A sigexp should
+       never be followed by AND except as part of sigexpand. 
+       Similarly for sigexpwand. *) 
+    | spec of SpecItem list
+    | specitem of SpecItem
+    | specitemp of PreSpecItem
+    | valdesc of (symbol * Ty) list
+    | methoddesc of (symbol * Ty) list
+    | valdescitem of symbol * Ty
+    | typdesc of (symbol list * symbol * Ty option) list
+    | typdescitem of symbol list * symbol * Ty option
+
+    | eqtypdesc of (symbol list * symbol) list
+    | eqtypdescitem of symbol list * symbol
+
+    | exdesc of ConBind list
+    | exdescitem of ConBind
+    | strdesc of (symbol * SigExp) list
+    | strdescitem of symbol * SigExp
+    | strdescitemand of symbol * SigExp
+    | longtycons_equals of longid list
+    | longstrids_equals of longid list
+    | siginfo of SigInfo
+
+    | sigbind of SigBind list
+    | sigbinditem of SigBind   
+    | sigbinditemand of SigBind
+    | funbind of FunBind list
+    | funbinditem of FunBind
+    | funbinditemand of FunBind
+
+    | funarg of FunArg
+
+    | topdecitemp of PreDecItem
+    | topdecitem of DecItem
+    | topdec of Dec
+
+(* extraend is inserted for error-checking purposes *)
+    | extraend of unit
+    | extrarparen of unit 
+    | start of Dec
+
+(* CLR attributes *)
+    | attexp of AttExp
+    | namedattributeargumentsopt of (NamedArg * AttArg) list
+    | namedattributearguments of (NamedArg * AttArg) list
+    | attributelist of AttExp list
+    | attributes of AttExp list
+
+
+    | qualifiers of symbol list
+    | qualifierlist of symbol list
+    | qualifiersandattributes  of (symbol list * AttExp list)
+    | methbindopt of MethBind list
+    | methbind of MethBind list
+    | methbinditem of MethBind
+    | methbinditemlist of MethBindItem list
+    | methbinditemitem of MethBindItem
+
+%eop EOF
+%noshift EOF
+
+%pure (* We are asserting that the rules are all (as far as matters)
+         pure and terminate.  This is good because it means ml-yacc
+         can execute them at once, even if it has to backtrack later
+         on because of errors. *)
+     
+
+%nonassoc WITHTYPE
+%right AND
+%right ARROW
+%right DARROW
+%left DO
+%left ELSE
+%left RAISE
+%right HANDLE
+%right WITH
+%left ORELSE
+%left ANDALSO
+%right AS
+%left COLONGT
+%left COLON
+
+%keyword ABSTYPE AND AS CASE DATATYPE DOTDOTDOT ELSE END 
+  EQTYPE EXCEPTION  DO  DARROW  FN  FUN  FUNCTOR  HANDLE
+  IF IN INCLUDE  INFIX  INFIXR  LAZY LET  LOCAL  NONFIX  OF  OP
+  OPEN  RAISE  REC  SHARING  SIG  SIGNATURE  STRUCT
+  STRUCTURE THEN TYPE VAL WHILE WHERE WITH WITHTYPE
+  ORELSE ANDALSO 
+  CLASSTYPE INTERFACETYPE SYNCHRONIZED PURE UNLESS
+
+%change  -> VAL | -> THEN | -> ELSE | -> LPAREN | -> SEMICOLON | 
+        DARROW -> EQUALOP | EQUALOP -> DARROW | AND -> ANDALSO | COLON -> OF |
+        SEMICOLON -> COMMA | COMMA -> SEMICOLON | -> IN ALPHA |
+        -> IN ALPHA END | -> ELSE ALPHA | -> WILD | -> LET | -> LOCAL |
+        WILD ALPHA -> ALPHA | WILD -> ALPHA | -> VAL WILD EQUALOP
+
+(* These are dummy values put in for error productions.  They should
+   not appear in the output of the parser unless errors are reported.
+   *)
+%value ALPHA (bad_symbol)
+%value SYMBOLIC (bad_symbol)
+%value TYVAR (bad_tyvar)
+%value INTLAB ("99999")
+%value SCON (SCon.RealCon "1.0")
+
+%%
+
+start   : topdec        (topdec)
+
+scon    : SCON          (SCON)
+        | INTLAB        (SCon.NumCon(IntConvFlags.Decimal,
+                         IntConvFlags.Signed false,(INTLAB)))
+
+vid     : ALPHA         (ALPHA)
+        | SYMBOLIC      (SYMBOLIC)
+        | ASTERISK      (asterisk)
+        | EQUALOP       (equalop)
+
+opvid   : OP vid        ((true,(vid)))
+        | vid           ((false,(vid)))
+
+strid   : ALPHA         (ALPHA)
+
+oplongvid
+        : vid           (Short(vid))
+        | OP vid        (OpShort(vid))
+        | ALPHA lvend
+                        (Long((ALPHA)::(lvend)))
+        | OP ALPHA lvend
+                        (Long((ALPHA)::(lvend)))
+
+lvend   : DOT vid     ([(vid)])
+        | DOT ALPHA lvend
+                      ((ALPHA)::(lvend))
+vidpat  : ALPHA         (ALPHA)
+        | SYMBOLIC      (SYMBOLIC)
+        | ASTERISK      (asterisk)
+
+oplongvidpat
+        : vidpat        (Short(vidpat))
+        | OP vidpat     (OpShort(vidpat))
+        | OP EQUALOP    (OpShort(equalop))
+        | ALPHA lvpatend
+                        (Long((ALPHA)::(lvpatend)))
+        | OP ALPHA lvpatend
+                        (Long((ALPHA)::(lvpatend)))
+
+lvpatend
+        : DOT vid       ([(vid)])
+        | DOT ALPHA lvpatend 
+                        ((ALPHA)::(lvpatend))
+
+tycon   : ALPHA         (ALPHA)
+        | SYMBOLIC      (SYMBOLIC)
+
+lab     : ALPHA         (ALPHA)
+        | SYMBOLIC      (SYMBOLIC)
+        | ASTERISK      (asterisk)
+        | INTLAB        (SAS(INTLAB))
+
+fieldname
+        : ALPHA         (ALPHA)
+        | SYMBOLIC      (SYMBOLIC)
+        (* INTLAB, ASTERISK, EQUALOP and so on should
+           not appear anything.  (mlj.lex turns almost anything
+           after a dot into a field name.) *)
+
+longstrid 
+        : strid         ([(strid)])
+        | strid DOT longstrid 
+                        ((strid)::(longstrid)) 
+
+longtycon 
+        : tycon         ([(tycon)])
+        | strid DOT longtycon
+                        ((strid)::(longtycon))
+
+opvidpat
+        : OP vidpat     ((true,(vidpat)))
+        | OP EQUALOP    ((true,(equalop)))
+        | vidpat        ((false,(vidpat)))
+
+funid   : ALPHA         ((ALPHA))
+
+sigid   : ALPHA         ((ALPHA))
+
+atexpp  : scon          (SCon(scon))
+        | oplongvid     (LongVid(oplongvid))
+        | LBRACE exprow RBRACE 
+                        (Record(exprow))
+        | LBRACE RBRACE (Record[])
+        | HASH lab      (Hash(lab))
+        | DOTHASH fieldname 
+                        (DotHash(fieldname))
+        | DOTHASHHASH fieldname
+                        (DotHashHash(fieldname))
+        | LPAREN RPAREN (Tuple[])
+        | LPAREN exp2commarow RPAREN
+                        (Tuple (exp2commarow))
+        | LBRACKET exp2commarow RBRACKET
+                        (List(exp2commarow))
+        | LBRACKET exp RBRACKET
+                        (List[(exp)])
+        | LBRACKET RBRACKET
+                        (List[])
+        | LPAREN exp2semirow RPAREN
+                        (Sequence(exp2semirow))
+        | LET dec IN exp UNLESS match END
+                        (LetUnless((dec),(exp),(match)))
+        | LET dec UNLESS match IN exp END
+                        (LetUnless((dec),(exp),(match)))
+        | LET dec IN exp END 
+                        (Let((dec),(exp)))
+        | LET dec IN exp2semirow END
+                        (Let((dec),({left=exp2semirowleft,right=exp2semirowright},Sequence(exp2semirow))))
+        | LPAREN SYNCHRONIZED exp RPAREN atexp
+                       (Synchronized((exp),(atexp)))
+        | PURE LPAREN exp RPAREN
+			(Pure(exp))
+
+
+atexp   : atexpp        (({left=atexppleft,right=atexppright},(atexpp)))
+        | LPAREN exp RPAREN 
+                        ((exp))
+
+commaexp
+        :               ([])
+        | COMMA exp commaexp
+                        ((exp)::(commaexp))
+exp1commarow
+        : exp commaexp  
+                        ((exp)::(commaexp))
+exp2commarow
+        : exp COMMA exp1commarow
+                        ((exp)::(exp1commarow))
+
+expsemirow
+        : exp           ([(exp)])
+        | exp2semirow   ((exp2semirow))
+exp2semirow
+        : exp SEMICOLON expsemirow
+                        ((exp)::(expsemirow))
+        
+exprow  : exprowitem    ([(exprowitem)])
+        | exprowitem COMMA exprow
+                        ((exprowitem)::(exprow))
+
+exprowitem
+        : lab EQUALOP exp
+                        (((lab),(exp)))
+                        
+flat2exp 
+        : atexp atexp   ([(atexp1),(atexp2)])
+        | atexp flat2exp
+                        ((atexp)::(flat2exp))
+
+expp    : flat2exp       (FlatApp(flat2exp))
+        | exp COLON ty  (Constraint((exp),(ty)))
+        | exp COLONGT ty (ConstraintGt((exp),(ty))) 
+        | exp ANDALSO exp
+                        (Andalso((exp1),(exp2)))
+        | exp ORELSE exp
+                        (Orelse((exp1),(exp2)))
+        | exp HANDLE match
+                        (Handle((exp),(match)))
+        | exp WITH methbind END
+			(ClassWith((exp), methbind))
+        | RAISE exp     (Raise(exp))
+        | IF exp THEN exp ELSE exp
+                        (If((exp1),(exp2),(exp3)))
+        | WHILE exp DO exp
+                        (While((exp1),(exp2)))
+        | CASE exp OF match
+                        (Case((exp),(match)))
+        | FN match      (Fn(match))
+
+exp     :  atexp         ((atexp)) (* abbreviation, to avoid flatexping
+                                      everything *)
+        |  expp          (({left=exppleft,right=exppright},(expp)))
+
+mrule   : pat DARROW exp
+                        ((pat),(exp))
+
+match   : mrule         ([(mrule)])
+        | mrule BAR match
+                        ((mrule)::(match))
+
+boundtyvar1seq 
+        : tyvar1seq     ({explicit=(tyvar1seq),implicit=[]})
+                        (* Andrew puts the implicit ones in later *)
+
+decitempl
+        : VAL boundtyvar1seq valbind
+                        (Val((boundtyvar1seq),(valbind)))
+        | VAL valbind   (Val(nobound,(valbind)))
+
+        | VAL boundtyvar1seq REC valbind
+                        (ValRec((boundtyvar1seq),(valbind)))
+        | VAL REC valbind
+                        (ValRec(nobound,(valbind)))
+
+        | FUN boundtyvar1seq fvalbind
+                        (FlatFun((boundtyvar1seq),(fvalbind)))
+        | FUN fvalbind
+                        (FlatFun(nobound,(fvalbind)))
+
+        | TYPE typbind  (Type(typbind))
+        | DATATYPE datbind 
+                        (Datatype((datbind),NONE))
+        | DATATYPE datbind WITHTYPE typbind
+                        (Datatype((datbind),SOME(typbind)))
+        | DATATYPE tycon EQUALOP DATATYPE longtycon
+                        (DatatypeCopy((tycon),(longtycon)))
+        | ABSTYPE datbind WITH dec END
+                        (Abstype((datbind),NONE,(dec)))
+        | ABSTYPE datbind WITHTYPE typbind WITH dec END
+                        (Abstype((datbind),SOME(typbind),(dec)))
+        | EXCEPTION exbind (Exception(exbind))
+        | OPEN longstrids_spaced
+                        (Open(longstrids_spaced))
+        | INFIX vids_spaced
+                        (Infix(0,(vids_spaced)))
+        | INFIX infix_digit vids_spaced
+                        (Infix(infix_check2(INFIXleft,INFIXright,infix_digit),
+                           (vids_spaced)))
+        | INFIXR vids_spaced
+                        (Infixr(0,(vids_spaced)))
+        | INFIXR infix_digit vids_spaced
+                        (Infixr(infix_check2(INFIXRleft,INFIXRright,
+                           infix_digit),(vids_spaced)))
+        | NONFIX vids_spaced
+                        (Nonfix(vids_spaced))
+        | classdec       (ClassDec(classdec))
+decitemp
+        : decitempl     ((decitempl))
+        | decitempl extrarparen 
+                        ((decitempl))
+        | LOCAL dec IN dec END
+                        (Local((dec1),(dec2)))
+       
+decitem : decitemp      ({left=decitempleft,right=decitempright},
+                         (decitemp))
+
+dec     :               ([])
+        | SEMICOLON dec (dec)
+        | decitem dec   ((decitem)::(dec))
+
+valbinditem
+        : pat EQUALOP exp
+                        (((pat),(exp)))
+
+valbind : valbinditem   ([(valbinditem)])
+        | valbinditem AND valbind
+                        ((valbinditem)::(valbind))
+
+fvalbind: fvalbinditem  ([(fvalbinditem)])
+        | fvalbinditem AND fvalbind
+                        ((fvalbinditem)::(fvalbind))
+
+fvalbinditem
+        : fvalbinditemitem 
+                        ([(fvalbinditemitem)])
+        | fvalbinditemitem BAR fvalbinditem
+                        ((fvalbinditemitem)::(fvalbinditem))
+
+fvalbinditemitem
+        : atpats_spaced EQUALOP exp
+                        ({left=atpats_spacedleft,right=expright},
+                         (atpats_spaced),(exp),NONE)
+        | atpats_spaced COLON ty EQUALOP exp
+                        ({left=atpats_spacedleft,right=expright},
+                         (atpats_spaced),(exp),SOME ty)
+
+
+methbindopt: 		([])
+	| methbind	(methbind)
+
+methbind: methbinditem  ([(methbinditem)])
+        | methbinditem AND methbind
+                        ((methbinditem)::(methbind))
+
+methbinditem 
+        : attributes qualifiers methbinditemlist (attributes,qualifiers,methbinditemlist)
+
+methbinditemlist
+        : methbinditemitem 
+                        ([(methbinditemitem)])
+(*@FUTURE:        | methbinditemitem BAR methbinditemlist
+                        ((methbinditemitem)::(methbinditemlist)) *)
+
+methbinditemitem
+        : vid atpat EQUALOP exp
+                        ({left=vidleft,right=expright},
+                         vid,SOME(atpat,exp),NONE)
+        | vid COLON ty
+			({left=vidleft,right=tyright},vid,NONE,SOME ty)
+
+
+
+typbind : typbinditem   ([(typbinditem)])
+        | typbinditem AND typbind
+                        ((typbinditem)::(typbind))                
+typbinditem
+        : tyvarseq tycon EQUALOP ty
+                        (((tyvarseq),(tycon),(ty)))
+
+datbind : datbinditem   ([(datbinditem)])
+        | datbinditem AND datbind
+                        ((datbinditem)::(datbind))
+
+datbinditem
+        : tyvar1seq tycon EQUALOP conbind
+                        ((tyvar1seq),(tycon),(conbind))
+        | tycon EQUALOP conbind
+                        ([],(tycon),(conbind))
+
+conbind : conbinditem   ([(conbinditem)])
+        | conbinditem BAR conbind
+                        ((conbinditem)::(conbind))
+
+conbinditem
+        : opvidpat      ((opvidpat),NONE)
+        | opvidpat OF ty
+                        ((opvidpat),SOME (ty))
+
+exbind  : exbinditem    ([(exbinditem)])
+        | exbinditem AND exbind
+                        ((exbinditem)::(exbind))
+
+exbinditem
+        : opvid         ((opvid),ExDesc(NONE))
+        | opvid OF ty   ((opvid),ExDesc(SOME ty))
+        | opvid EQUALOP oplongvid
+                        ((opvid),ExBind(oplongvid))
+
+longstrids_spaced
+        : longstrid     ([(longstrid)])
+        | longstrid longstrids_spaced
+                        ((longstrid)::(longstrids_spaced))
+
+vids_spaced
+        : vid           ([(vid)])
+        | vid vids_spaced
+                        ((vid)::(vids_spaced))
+
+infix_digit
+(* one digit *)
+        : INTLAB        (infix_check(INTLABleft,INTLABright,(INTLAB)))
+        | SCON          (case (SCON) of
+                           SCon.NumCon(IntConvFlags.Decimal,
+                              IntConvFlags.Signed false,s) =>
+                              infix_check(SCONleft,SCONright,s)
+                        |  _ => (~1)
+                        )
+
+atpats_spaced  
+        : atpat         ([atpat])
+        | atpat atpats_spaced  
+                        ((atpat)::(atpats_spaced))
+        | atpatwild     ((#1 atpatwild)::(#2 atpatwild)::[])
+        | atpatwild atpats_spaced
+                        ((#1 atpatwild)::(#2 atpatwild)::atpats_spaced)
+
+tyvar1seq
+        : TYVAR         ([(TYVAR)])
+        | LPAREN tyvarrow RPAREN
+                        ((tyvarrow))
+
+tyvarseq:               ([])
+        | TYVAR         ([(TYVAR)])
+        | LPAREN tyvarrow RPAREN
+                        ((tyvarrow))
+
+tyvarrow: TYVAR         ([(TYVAR)])
+        | TYVAR COMMA tyvarrow
+                        ((TYVAR)::(tyvarrow))
+
+
+(* Patterns *)
+atpatp  : WILD          (PatWild)
+        | scon          (PatSCon(scon))
+        | oplongvidpat  (PatVar(oplongvidpat))
+        | LBRACE patrow RBRACE
+                        (PatRecord(patrow))
+        | LPAREN RPAREN (PatTuple [])
+        | LPAREN pat COMMA pat commapatseq RPAREN
+                        (PatTuple((pat1)::(pat2)::(commapatseq)))
+        | LBRACKET RBRACKET
+                        (PatList [])
+        | LBRACKET pat commapatseq RBRACKET
+                        (PatList((pat)::(commapatseq)))
+        | LPAREN pat RPAREN
+                        (PatParen(pat))
+
+atpatwildp:
+          CLASSTYPE     (ClasstypeS)
+        | SYNCHRONIZED  (SynchronizedS)
+        | INTERFACETYPE (InterfacetypeS)
+        | UNLESS        (UnlessS)
+      
+atpatwild
+        : atpatwildp    ((({left=atpatwildpleft,right=atpatwildpleft+1}),
+                           PatWild),
+                         ({left=atpatwildpleft+1,right=atpatwildpright},
+                           PatVar(Short(atpatwildp))))
+atpat   : atpatp        (({left=atpatpleft,right=atpatpright},(atpatp)))
+
+atpat2p : atpatp        (atpatp)
+        | atpatp atpats_spaced
+                        (FlatPat(({left=atpatpleft,right=atpatpright},
+                           (atpatp))::(atpats_spaced)))
+        | atpatwild     (FlatPat((#1 atpatwild)::(#2 atpatwild)::[]))
+        | atpatwild atpats_spaced
+                        (FlatPat((#1 atpatwild)::(#2 atpatwild)::
+                           atpats_spaced))
+
+atpat3p : atpat2p       (atpat2p)
+        | atpat2p COLON ty 
+                        (PatConstraint(({left=atpat2pleft,right=atpat2pright},
+                           (atpat2p)),(ty)))
+        | vid COLONGT ty (PatCast((vid),(ty)))
+        (* Because the ML grammar is stupid, for COLON ty AS we need
+           to reconstruct the syntax tree.  This is done by layerpat.  We
+           also to this for just AS, to avoid a shift-reduce conflict. *)
+        | atpat2p AS atpat3 
+                        (layerpat(atpat2p,NONE,atpat3,ASleft,ASright))
+        | atpat2p COLON ty AS atpat3
+                        (layerpat(atpat2p,SOME ty,atpat3,ASleft,ASright))
+
+atpat3  : atpat3p       (({left=atpat3pleft,right=atpat3pright},(atpat3p)))
+
+patp    : atpat3p       ((atpat3p))
+        | atpat3p BAR atpat3bar
+                        (OrPat(({left=atpat3pleft,right=atpat3pright},
+                           (atpat3p))::(atpat3bar)))
+
+atpat3bar
+        : atpat3       ([(atpat3)])
+        | atpat3 BAR atpat3bar
+                       ((atpat3)::(atpat3bar))
+
+pat     : patp          (({left=patpleft,right=patpright},(patp)))
+
+commapatseq
+        :               ([])
+        | COMMA pat commapatseq
+                        ((pat)::(commapatseq))
+
+patrow  :               ((false,[])) 
+        | DOTS          ((true,[]))
+        | patrowitem    ((false,[patrowitem]))
+        | patrowitem COMMA patrow
+                        ((#1 (patrow),(patrowitem)::(#2(patrow))))
+
+patrowitem
+        : lab EQUALOP pat
+                        (((lab),(pat)))
+        | patrowitemp   ((#1(patrowitemp),
+                          ({left=patrowitempleft,right=patrowitempright},
+                           #2(patrowitemp))))
+patrowitemp
+        : vid           (((vid),PatVar(Short vid)))
+        | vid COLON ty  (((vid),PatConstraint(
+                           ({left=vidleft,right=vidright},PatVar(Short vid))
+                           ,(ty))))
+        | vid AS pat    (((vid),PatLayer((false,vid),NONE,(pat))))
+        | vid COLON ty AS pat
+                        (((vid),PatLayer((false,vid),SOME(ty),(pat))))
+
+(* Types *)
+attyp   : TYVAR         (TyVar(TYVAR))
+        | LBRACE tyrow RBRACE
+                        (TyRecord(tyrow))
+        | LBRACE RBRACE (TyRecord[])
+        | longtycon     (TyCon([],(longtycon)))
+
+atty    : attyp         (({left=attypleft,right=attypright},(attyp)))
+        | LPAREN ty RPAREN
+                        (ty)
+
+attyc   : atty          (atty)
+        | LPAREN ty COMMA ty commatyseq RPAREN longtycon
+                        (({left=LPARENleft,right=longtyconright},
+                           TyCon((ty1)::(ty2)::(commatyseq),(longtycon))))
+        | attyc longtycon
+                        (({left=attycleft,right=longtyconright},
+                           TyCon([(attyc)],(longtycon))))
+
+tytupl  : attyc          ([(attyc)])
+        | attyc ASTERISK tytupl
+                        ((attyc)::(tytupl))
+
+tytuple : tytupl        (case (tytupl) of
+                           [ty] => ty
+                        |  l => ({left=tytuplleft,right=tytuplright},
+                                   TyTuple((tytupl)))
+                        )
+
+ty      : tytuple       (tytuple)
+        | tytuple ARROW ty
+                        (({left=tytupleleft,right=tyright},
+                           TyFun((tytuple),(ty))))
+
+commatyseq
+        :               ([])
+        | COMMA ty commatyseq
+                        ((ty)::(commatyseq)) 
+
+tyrow   : tyrowitem     ([(tyrowitem)])
+        | tyrowitem COMMA tyrow
+                        ((tyrowitem)::(tyrow))
+
+tyrowitem
+        : lab COLON ty  (((lab),(ty)))
+
+classlocal 
+         :              ([])
+         | LOCAL dec IN 
+			(dec)
+
+inheritlist : inherititem ([inherititem])
+         | inherititem COMMA inheritlist (inherititem::inheritlist)
+
+descinheritlist : atty 	([atty])
+         | atty COMMA descinheritlist (atty::descinheritlist)
+
+inherititem : atty atexp	(Extends(atty,atexp))
+	 | atty		(Implements atty)
+
+inherits    :		([])
+          | COLON inheritlist (inheritlist)
+
+descinherits :		([])
+          | COLON descinheritlist (descinheritlist)
+
+attexp :    exp namedattributeargumentsopt 
+                ({left=expleft,right=namedattributeargumentsoptright},(AttApp((exp),(namedattributeargumentsopt))))
+	    
+namedattributeargumentsopt :  	([])
+          | WHERE fieldname EQUALOP exp namedattributearguments END
+	           	 ((Field fieldname,(exp))::(namedattributearguments))
+	  | WHERE fieldname atexp namedattributearguments  END 
+	           	 ((Property fieldname,(atexp))::(namedattributearguments))  
+
+namedattributearguments :   ([])
+	  | COMMA fieldname EQUALOP exp namedattributearguments 
+	           	 ((Field fieldname,(exp))::(namedattributearguments))
+	  | COMMA fieldname  atexp  namedattributearguments  
+	           	 ((Property fieldname,(atexp))::(namedattributearguments)) 
+
+attributelist :		([])
+	  | COMMA attexp attributelist	(attexp::attributelist)
+
+attributes :		  ([])
+	  | LBRACE RBRACE ([])
+          | LBRACE attexp attributelist RBRACE (attexp::attributelist)
+
+qualifierlist :		([])
+	  | ALPHA qualifierlist	(ALPHA::qualifierlist)
+
+qualifiers :		([])
+          | LBRACKET qualifierlist RBRACKET (qualifierlist)
+
+qualifiersandattributes:  (([],[]))
+	 | LBRACKET qualifierlist RBRACKET attributes ((qualifierlist,attributes))
+
+classdec : CLASSTYPE attributes qualifiersandattributes tycon atpat inherits WITH classlocal methbindopt END
+                        (let val(qualifiers,conattributes) = qualifiersandattributes 
+	                 in
+	                  ClassType{
+	                  attributes=(attributes),
+                          conattributes = conattributes,
+                          tycon=(tycon),
+                          modifiers=qualifiers,
+                          pat=(atpat),
+                          localdec=classlocal,
+                          inherits=inherits,
+                          methoddec=methbindopt
+                          } 
+	                 end)
+ 	| INTERFACETYPE attributes qualifiers tycon inherits WITH methbindopt END
+                        (ClassType{
+	                  attributes=(attributes),
+                          conattributes = [],
+                          tycon=(tycon),
+                          modifiers= InterfaceS::qualifiers,
+                          pat=({left=tyconleft,right=tyconright},PatTuple[]),
+                          localdec=[],
+                          inherits=inherits,
+                          methoddec=methbindopt
+                          })
+         | CLASSTYPE attributes qualifiersandattributes tycon OF ty
+                        (let val(qualifiers,conattributes) = qualifiersandattributes 
+	                 in
+	                  DelegateType{
+                          tycon=(tycon),
+	                  attributes=(attributes),
+                          conattributes = conattributes,
+                          modifiers=qualifiers,
+	                  ty=ty
+                          } 
+	                 end)
+
+tyopt : 		(NONE)
+      |	ty		(SOME ty)
+
+methoddesc :		([])
+      | WITH valdesc END (valdesc)
+
+classdesc : CLASSTYPE qualifiers tycon tyopt descinherits methoddesc
+                        (ClassTypeSpec{
+                          tycon=(tycon),
+                          modifiers=qualifiers,
+                          conty=tyopt,
+                          inherits=descinherits,
+                          methodspec=methoddesc
+                          })
+
+(* MODULES.
+
+   Note that we need to combine productions in section 3.5 of the
+   standard with those in Appendix A.
+   *)
+
+strexpcom
+        : STRUCT strdec END
+                        (Struct(strdec))
+        | longstrid     (Strid(longstrid))
+        | funid LPAREN strexp RPAREN
+                        (FunApp((funid),(strexp)))
+        | funid LPAREN strdecarg RPAREN
+                        (FunApp((funid),({left=strdecargleft,
+                           right=strdecargright},Struct(strdecarg))))
+        | LET strdec IN strexp END
+                        (StrLet((strdec),(strexp)))
+
+strexpp : strexpcom     (strexpcom)
+        | strexp COLON sigexp
+                        (StrTransparent((strexp),(sigexp)))
+        | strexp COLONGT sigexp
+                        (StrOpaque((strexp),(sigexp)))
+strexpandp
+        : strexpcom AND (strexpcom)
+        | strexp COLON sigexpand
+                        (StrTransparent((strexp),(sigexpand)))
+        | strexp COLONGT sigexpand
+                        (StrOpaque((strexp),(sigexpand)))
+
+strexp  : strexpp       (({left=strexppleft,right=strexppright},(strexpp)))
+
+strexpand
+        : strexpandp    (({left=strexpandpleft,right=strexpandpright},
+                           (strexpandp)))
+
+strdecitemp
+        : decitempl     ((decitempl))
+        | STRUCTURE strbind
+                        (Structure(strbind))
+        | LOCAL strdec IN strdec END
+                        (Local((strdec1),(strdec2)))
+
+strdecitem
+        : strdecitemp   (({left=strdecitempleft,right=strdecitempright},
+                           (strdecitemp)))
+  
+sigdecitemp
+        : SIGNATURE     sigbind
+                        (Signature(sigbind))
+        | LOCAL strdec IN sigdecitem END
+                        (Local(strdec,[sigdecitem]))
+
+sigdecitem
+        : sigdecitemp   (({left=sigdecitempleft,right=sigdecitempright},
+                           (sigdecitemp)))
+  
+strdec  :               ([])
+        | extrarparen strdec
+                        ((strdec))
+        | SEMICOLON strdec
+                        ((strdec))
+        | strdecitem strdec
+                        ((strdecitem)::(strdec))
+
+strdecarg  
+        :               ([])
+        | SEMICOLON strdecarg
+                        ((strdecarg))
+        | strdecitem strdecarg
+                        ((strdecitem)::(strdecarg))
+
+strbind : strbinditem   ([(strbinditem)])
+        | strbinditemand strbind
+                        ((strbinditemand)::(strbind))
+
+siginfo :               (SigNone)
+        | COLON sigexp  (SigConcrete(sigexp))
+        | COLONGT sigexp 
+                        (SigAbstract(sigexp))
+
+strbinditem
+        : strid siginfo EQUALOP strexp
+                        (((strid),(strexp),(siginfo)))
+
+strbinditemand
+        : strid siginfo EQUALOP strexpand
+                        (((strid),(strexpand),(siginfo)))
+
+sigexpp : SIG spec END  (SigSpec(spec))
+        | sigid         (Sigid(sigid))
+
+
+sigexpwand 
+        : sigexpw AND   (sigexpw)
+sigexpwp
+        : sigexp WHERE TYPE tyvarseq longtycon EQUALOP ty
+                        (Where((sigexp),(tyvarseq),(longtycon),(ty)))
+        | sigexpwand TYPE tyvarseq longtycon EQUALOP ty
+                        (Where((sigexpwand),(tyvarseq),(longtycon),(ty)))
+
+sigexpw
+        : sigexpwp      (({left=sigexpwpleft,right=sigexpwpright},(sigexpwp)))
+
+sigexp  : sigexpp       (({left=sigexppleft,right=sigexppright},(sigexpp)))
+        | sigexpw       ((sigexpw))
+
+sigexpand
+        : sigexpwand    (sigexpwand)
+        | sigexpp AND   (({left=sigexppleft,right=sigexppright},sigexpp))
+
+spec    :               ([])
+        | SEMICOLON spec
+                        ((spec))
+        | specitem spec ((specitem)::(spec))
+
+specitem
+        : specitemp     (({left=specitempleft,right=specitempright},
+                           (specitemp)))
+
+specitemp
+        : VAL valdesc   (ValDesc(valdesc))
+        | TYPE typdesc  (TypeDesc(typdesc))
+        | EQTYPE eqtypdesc
+                        (EqTypeDesc(eqtypdesc))
+        | DATATYPE datbind
+                        (DatatypeDesc((datbind),NONE))
+        | DATATYPE datbind WITHTYPE typbind
+                        (DatatypeDesc((datbind),SOME(typbind)))
+        | DATATYPE tycon EQUALOP DATATYPE longtycon
+                        (DatatypeDescCopy((tycon),(longtycon)))
+        | EXCEPTION exdesc
+                        (ExceptionDesc(exdesc))
+        | STRUCTURE strdesc
+                        (StructureDesc(strdesc))
+        | INCLUDE sigexp
+                        (Include(sigexp))
+        | SHARING TYPE longtycons_equals
+                        (SharingType(longtycons_equals))
+        | SHARING longstrids_equals
+                        (Sharing(longstrids_equals))
+(*@FUTURE:        | classdesc      (ClassDesc(classdesc)) *)
+
+valdesc
+        : valdescitem   ([(valdescitem)])
+        | valdescitem AND valdesc
+                        ((valdescitem)::(valdesc))  
+
+valdescitem
+        : vid COLON ty  (((vid),(ty)))
+
+typdesc
+        : typdescitem   ([(typdescitem)])
+        | typdescitem AND typdesc
+                        ((typdescitem)::(typdesc))
+
+typdescitem
+        : tyvarseq tycon
+                        (((tyvarseq),(tycon),NONE))
+        | tyvarseq tycon EQUALOP ty
+                        (((tyvarseq),(tycon),SOME(ty)))
+
+eqtypdesc
+        : eqtypdescitem ([(eqtypdescitem)])
+        | eqtypdescitem AND eqtypdesc
+                        ((eqtypdescitem)::(eqtypdesc))
+
+eqtypdescitem
+        : tyvarseq tycon
+                        (((tyvarseq),(tycon)))
+     
+exdesc  : exdescitem    ([(exdescitem)])
+        | exdescitem AND exdesc
+                        ((exdescitem)::(exdesc))
+
+exdescitem
+        : vid OF ty     (((false,vid),SOME ty))
+        | vid           (((false,vid),NONE))
+
+strdesc : strdescitem   ([(strdescitem)])
+        | strdescitemand strdesc
+                        ((strdescitemand)::(strdesc))
+
+strdescitem
+        : strid COLON sigexp
+                        (((strid),(sigexp)))
+
+strdescitemand
+        : strid COLON sigexpand
+                        (((strid),(sigexpand)))
+
+longtycons_equals
+        : longtycon EQUALOP longtycon 
+                        ([(longtycon1),(longtycon2)])
+        | longtycon EQUALOP longtycons_equals
+                        ((longtycon)::(longtycons_equals))
+
+longstrids_equals
+        : longstrid EQUALOP longstrid 
+                        ([(longstrid1),(longstrid2)])
+        | longstrid EQUALOP longstrids_equals
+                        ((longstrid)::(longstrids_equals))
+
+sigbind : sigbinditem   ([(sigbinditem)])
+        | sigbinditemand sigbind
+                        ((sigbinditemand)::(sigbind))
+
+sigbinditem
+        : sigid EQUALOP sigexp
+                        (((sigid),(sigexp)))
+
+sigbinditemand
+        : sigid EQUALOP sigexpand
+                        (((sigid),(sigexpand)))
+
+funbind : funbinditem   ([(funbinditem)])
+        | funbinditemand funbind
+                        ((funbinditemand)::(funbind))
+
+funarg  : strid COLON sigexp
+                        (StructArg((strid),(sigexp)))
+        | spec          (SpecArg(spec))
+
+funbinditem 
+        : funid LPAREN funarg RPAREN siginfo EQUALOP strexp
+                        (((funid),(funarg),(siginfo),(strexp)))
+
+funbinditemand 
+        : funid LPAREN funarg RPAREN siginfo EQUALOP strexpand
+                        (((funid),(funarg),(siginfo),(strexpand)))
+
+topdecitemp
+        : strdecitemp   ((strdecitemp))
+        | sigdecitemp   ((sigdecitemp))
+        | FUNCTOR funbind
+                        (Functor(funbind))
+
+topdecitem
+        : topdecitemp   (({left=topdecitempleft,right=topdecitempright},
+                           (topdecitemp)))
+
+extraend
+        : END           (if ENDright-ENDleft=3
+                         then
+                           (ERROR(ENDleft,ENDright,"Extra END");
+                            ())
+                         else ()
+                         )
+
+extrarparen
+        : RPAREN        (if RPARENright-RPARENleft=1
+                         then
+                           (ERROR(RPARENleft,RPARENright,"Extra RPAREN");
+                            ())
+                         else ()
+                         )
+                         
+topdec  :               ([])
+        | SEMICOLON topdec
+                        ((topdec))
+        | extrarparen topdec
+                        ((topdec))
+        | extraend topdec
+                        ((topdec))
+        | topdecitem topdec
+                        ((topdecitem)::(topdec))
+
+       
+
+
+

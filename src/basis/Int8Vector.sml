@@ -1,0 +1,1 @@
+structure Int8Vector = VectorFun_(type elem = Int8.int)

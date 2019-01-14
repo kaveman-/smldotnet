@@ -1,0 +1,1 @@
+structure Word8Array = ArrayFun_(structure Vector = Word8Vector)

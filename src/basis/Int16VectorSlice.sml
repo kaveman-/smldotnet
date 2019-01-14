@@ -1,0 +1,1 @@
+structure Int16VectorSlice = VectorSliceFun_(type elem = Int16.int)

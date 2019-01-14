@@ -1,0 +1,1 @@
+structure IntSort=Sort(IntKey)

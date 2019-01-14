@@ -1,0 +1,1 @@
+structure Word16Array = ArrayFun_(structure Vector = Word16Vector)

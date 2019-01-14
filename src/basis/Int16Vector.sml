@@ -1,0 +1,1 @@
+structure Int16Vector = VectorFun_(type elem = Int16.int)

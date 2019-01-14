@@ -1,0 +1,1 @@
+structure Word32Vector = VectorFun_(type elem = Word32.word)

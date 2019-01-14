@@ -1,0 +1,1 @@
+structure Int8VectorSlice = VectorSliceFun_(type elem = Int8.int)

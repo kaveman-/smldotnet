@@ -1,0 +1,1 @@
+structure CharVectorSlice = VectorSliceFun_(type elem = Char.char)

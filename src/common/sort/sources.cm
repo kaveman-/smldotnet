@@ -1,0 +1,31 @@
+(* This is the sources.cm file for the Sort functor *)
+Group
+(*Library
+   functor Sort
+   signature SORT
+   signature ORD_KEY
+   signature PARTIALINTSET
+   structure IntIntervalPartialIntSet
+   signature PRIORITYQUEUE
+   structure PriorityQueue
+   structure IntKey
+   structure IntSort*)
+is
+   $/smlnj-lib.cm (* SML/NJ extras *)
+   $/basis.cm
+
+   Sort.sml
+   SORT.sig
+   IntKey.sml
+   IntSort.sml
+   INTERSECTS.sig
+   Intersects.sml
+   PARTIALINTSET.sig
+   INTSET.sig
+   IntIntSet.sml
+   IntervalIntSet.sml
+   DProdIntSet.sml
+   IntIntervalPartialIntSet.sml
+   PRIORITYQUEUE.sig
+   PriorityQueue.sml
+   ../arrays/sources.cm

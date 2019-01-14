@@ -1,0 +1,1 @@
+structure Word64VectorSlice = VectorSliceFun_(type elem = Word64.word)

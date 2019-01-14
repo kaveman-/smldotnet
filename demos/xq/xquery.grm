@@ -1,0 +1,56 @@
+(* ml-yacc input for xquery parser *)
+
+%%
+%verbose
+%name XQuery
+%eop TEOF
+%noshift TEOF
+%pos int
+%term TFor | TLet | TIn | TDo | TIf | TThen | TElse |
+      TWhere | TMatch | TCase | TData | TChildren | TSum |
+      TType | TFun | TQuery | 
+      TIdentifier of string |
+      TStringLiteral of string |
+      TIntegerLiteral of int |
+      TBooleanLiteral of bool |
+      TLPAR | TRPAR | TBRA | TKET | TEQUAL | TTILDE | TCOLON |
+      TPLUS | TMINUS | TTIMES | TSLASH | TCOMMA | TSEMI |
+      TGT | TGEQ | TLT | TLEQ | TNEQ |
+      TEOF
+
+%nonterm Nexpression of Syntax.XMLExp | start of Syntax.XMLExp | idlist of string list | explist of Syntax.XMLExp list
+
+%%
+start : Nexpression TEOF (Nexpression)
+idlist : ([])
+ | TIdentifier ([TIdentifier])
+ | TIdentifier TSEMI idlist (TIdentifier :: idlist)
+explist : ([])
+ | Nexpression ([Nexpression])
+ | Nexpression TSEMI explist (Nexpression :: explist)
+Nexpression : TStringLiteral (Syntax.EConst(Syntax.S(TStringLiteral)))
+ | TIntegerLiteral (Syntax.EConst(Syntax.I(TIntegerLiteral)))
+ | TBooleanLiteral (Syntax.EConst(Syntax.B(TBooleanLiteral)))
+ | TIdentifier (Syntax.EVar(TIdentifier))
+ | TIdentifier TBRA Nexpression TKET (Syntax.EElem(TIdentifier,Nexpression))
+ | TLPAR TRPAR (Syntax.EEmptySeq)
+ | TLPAR Nexpression TRPAR (Nexpression)
+ | Nexpression TCOMMA Nexpression (Syntax.EConcat(Nexpression1,Nexpression2))
+ | TIf Nexpression TThen Nexpression TElse Nexpression (Syntax.ECond(Nexpression1,Nexpression2,Nexpression3))
+ | TWhere Nexpression TDo Nexpression (Syntax.ECond(Nexpression1,Nexpression2,Syntax.EEmptySeq))
+ | TLet TIdentifier TEQUAL Nexpression TDo Nexpression (Syntax.ELet(TIdentifier,Nexpression1, Nexpression2))
+ | TLet TIdentifier TLPAR idlist TRPAR TEQUAL Nexpression TIn Nexpression (Syntax.EFunDef(TIdentifier,idlist,Nexpression1,Nexpression2))
+ | TIdentifier TLPAR explist TRPAR (Syntax.EFunApp(TIdentifier,explist))
+ | TFor TIdentifier TIn Nexpression TDo Nexpression (Syntax.EFor(TIdentifier,Nexpression1, Nexpression2))
+ | Nexpression TEQUAL Nexpression (Syntax.EFunApp("=",[Nexpression1,Nexpression2]))
+ | Nexpression TPLUS Nexpression (Syntax.EFunApp("+",[Nexpression1,Nexpression2]))
+ | Nexpression TGT Nexpression (Syntax.EFunApp(">",[Nexpression1,Nexpression2]))
+ | Nexpression TGEQ Nexpression (Syntax.EFunApp(">=",[Nexpression1,Nexpression2]))
+ | Nexpression TLEQ Nexpression (Syntax.EFunApp("<=",[Nexpression1,Nexpression2]))
+ | Nexpression TLT Nexpression (Syntax.EFunApp("<",[Nexpression1,Nexpression2]))
+ | Nexpression TMINUS Nexpression (Syntax.EFunApp("-",[Nexpression1,Nexpression2]))
+ | Nexpression TTIMES Nexpression (Syntax.EFunApp("*",[Nexpression1,Nexpression2]))
+ | Nexpression TNEQ Nexpression (Syntax.EFunApp("<>",[Nexpression1,Nexpression2]))
+
+ | Nexpression TSLASH TIdentifier (Syntax.EProject(TIdentifier,Nexpression))
+ | Nexpression TSLASH TData TLPAR TRPAR (Syntax.EValue(Nexpression))

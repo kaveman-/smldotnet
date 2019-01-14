@@ -1,0 +1,1 @@
+structure Real32VectorSlice = VectorSliceFun_(type elem = Real32.real)

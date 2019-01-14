@@ -1,0 +1,154 @@
+Group
+   (* Handles *)
+   signature CLASSHANDLE
+   structure ClassHandle
+
+   (* Constants *)
+   signature CONSTANTS
+   structure Constants
+
+   (* Types *)
+   signature TYPES
+   structure Types
+
+   (* Values *)
+   signature RTINT (* Java integers *)
+   structure RTInt
+   signature RTLONG (* Java longs *)
+   structure RTLong 
+   signature JAVAINTINF (* Java BigIntegers *)
+   structure JavaIntInf
+   signature NUMOPS (* Operations on Java integers and Java longs *)
+   signature USTRING (* Java strings *)
+   structure UString
+   signature UCHAR (* Java characters *)
+   structure UChar
+   signature RTFLOAT (* Java floats (32 bit reals) *)
+   structure RTFloat
+   signature RTDOUBLE (* Java doubles (64 bit reals) *)
+   structure RTDouble
+   signature PACKABLE 
+   (* Signature of structures in RTInt,RTLong,UString,RTFloat and
+      RTDouble which represent these as Word8Vectors. *)
+   structure IntConvFlags
+
+   structure BytePackML (* Packs Word8Vectors into UStrings *)
+   signature BYTEPACKML
+
+   structure Hash (* Hash functions *)
+   signature HASH
+
+   (* Miscellaneous structures needed by the values structures but also
+      by the backend *)
+   signature ASSERT
+   structure Assert
+   signature NUMBERS
+   structure Numbers
+   signature READINTS
+   structure ReadInts
+
+   (* The Symbol structure, which implements symbols for the compiler *)
+   signature SYMBOL
+   structure Symbol
+(*
+   signature LONGID
+   structure Longid
+*)
+
+is
+   $/smlnj-lib.cm
+   $/basis.cm
+   
+   (* class handles *)
+   handles/CLASSHANDLE.sig
+   handles/ClassHandle.sml
+   
+(* Runtime types and constants *)
+   typesconsts/CONSTANTS.sig
+   typesconsts/Constants.sml
+   typesconsts/TYPES.sig 
+   typesconsts/Types.sml
+
+(* Runtime values and code for converting them to and from various
+   formats *)
+   values/RTINT.sig
+   values/RTInt.sml
+   values/RTLONG.sig
+   values/RTLong.sml 
+   values/JAVAINTINF.sig
+   values/JavaIntInf.sml
+
+   values/NUMOPS.sig (* Operations on Java integers and Java longs *)
+   values/REP16.sig (* Rep16:NUMOPS->REP16s is used to represent
+                       Java integers and longs as lists of ordinary
+                       ML integers *)
+   values/Rep16.sml   
+   values/USTRING.sig (* Java strings *)
+   values/UString.sml
+   values/UCHAR.sig (* Classifies Unicode characters *)
+   values/UChar.sml
+   values/RTFLOAT.sig (* Java floats (32 bit reals) *)
+   values/RTFloat.sml
+   values/RTDOUBLE.sig (* Java doubles (64 bit reals) *)
+   values/RTDouble.sml
+   values/PACKABLE.sig 
+   (* Signature of structures in RTInt,RTLong,UString,RTFloat and
+      RTDouble which represent these as Word8Vectors. *)
+   values/IntConvFlags.sml
+   (* Flags used for converting strings to RTInts and RTLongs *)
+   (* INTOPS, IntConv():INTCONV, MulCarry:MULCARRY, and IntConvFlags,
+      are all used by the fromString functions of RTLong and RTInt.
+      INTOPS is the signature defining the basic arithmetic operations
+      needed for conversion from strings to numbers; it is implemented by
+      RTInt and RTLong.  These implementations use the MulCarry
+      structure, which provides multiplication by 10 and 16 of Word32s with
+      carry.  The IntConv functor produces a structure of signature INTCONV
+      from an INTOPS structure, which implements fromString for that numeric
+      type.  IntConvFlags contains the flags which parameterise fromString
+      on base & kind (IE signing information). *)
+   values/INTCONV.sig
+   values/IntConv.sml
+   values/INTOPS.sig
+   values/MULCARRY.sig
+   values/MulCarry.sml
+   
+   values/PACKFLOAT.sig (* Used internally for packing reals in Word8Vectors *)
+   values/PackFloat.sml
+   values/UNPACKFLOAT.sig (* Used internally for unpacking reals from
+                             Word8Vectors. *)
+   values/UnPackFloat.sml
+
+   values/BYTEPACKML.sig (* Packs Word8Vectors to UStrings *)
+   values/BytePackML.sml
+   ../basis/BYTEPACK.sig (* common code used by BytePackML and BytePackJava
+                          (part of the basis). *)
+   ../basis/BytePack.sml
+
+
+   (* The structures in utils are used by other code in this sources.cm
+      file but are also used by the backend *)
+   utils/ASSERT.sig (* Used for reporting errors when decoding
+                             classfiles and unpacking values from 
+                             Word8Vectors *)
+   utils/Assert.sml
+   utils/NUMBERS.sig (* Used for encoding numbers as Word8Vectors *)
+   utils/Numbers.sml
+   utils/READINTS.sig (* Used for reading integers and various other
+                               miscellaneous input operations on binary
+                               instreams *)
+   utils/ReadInts.sml
+
+   utils/W8Order.sml (* ORD_KEY for Word8Vectors *)
+   utils/HASH.sig (* Hash functions *)
+   utils/Hash.sml
+
+   utils/SYMBOL.sig (* Implements symbols for the compiler *)
+   utils/Symbol.sml
+   utils/GeneralSymbol.sml 
+                
+   utils/RESERVED.sig
+   utils/Reserved.sml
+
+
+
+

@@ -1,0 +1,1 @@
+smlnet -target:library CPDemo

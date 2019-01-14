@@ -1,0 +1,1 @@
+structure WideCharVector = CharVector

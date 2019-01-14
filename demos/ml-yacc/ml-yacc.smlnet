@@ -1,0 +1,8 @@
+@..\..\lib\parsing\sources
+@src\sources
+out ml-yacc.exe
+export ExportParseGen
+make
+
+
+

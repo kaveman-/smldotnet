@@ -1,0 +1,1 @@
+structure Word16ArraySlice = ArraySliceFun_(structure VectorSlice = Word16VectorSlice)

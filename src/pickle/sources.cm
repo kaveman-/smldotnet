@@ -1,0 +1,12 @@
+Group is
+  $/smlnj-lib.cm
+  $/basis.cm
+  ../gen/sources.cm
+  PICKLESIG.sig
+  BASEPICKLESIG.sig
+  CODEC.sig
+  BytePickle.sml
+  BitPickle.sml
+  PickleFun.sml
+  BasePickleFun.sml
+  Pickle.sml

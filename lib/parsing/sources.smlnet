@@ -1,0 +1,4 @@
+structure LrTable=lrtable.sml, Stream=stream.sml, LrParser=parser2.sml
+signature STREAM=base.sig, LR_TABLE=base.sig, TOKEN=base.sig, LR_PARSER=base.sig, LEXER=base.sig, 
+  ARG_LEXER=base.sig, PARSER_DATA=base.sig, PARSER=base.sig, ARG_PARSER=base.sig, FIFO=parser2.sml
+functor Join=join.sml, JoinWithArg=join.sml

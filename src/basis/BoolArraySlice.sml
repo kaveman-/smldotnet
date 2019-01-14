@@ -1,0 +1,1 @@
+structure BoolArraySlice = ArraySliceFun_(structure VectorSlice = BoolVectorSlice)

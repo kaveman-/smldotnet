@@ -1,0 +1,1 @@
+structure BoolArray = ArrayFun_(structure Vector = BoolVector)

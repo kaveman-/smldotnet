@@ -1,0 +1,1 @@
+structure Word32Array = ArrayFun_(structure Vector = Word32Vector)

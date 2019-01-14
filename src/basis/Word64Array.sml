@@ -1,0 +1,1 @@
+structure Word64Array = ArrayFun_(structure Vector = Word64Vector)

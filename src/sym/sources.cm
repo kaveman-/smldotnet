@@ -1,0 +1,9 @@
+Group is
+  $/smlnj-lib.cm
+  ../gen/sources.cm
+  ../pickle/sources.cm
+  ../common/sources.cm
+  Id.sml
+  IdPickle.sml
+  Longid.sml
+  LONGID.sig

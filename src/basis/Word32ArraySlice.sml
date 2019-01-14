@@ -1,0 +1,1 @@
+structure Word32ArraySlice = ArraySliceFun_(structure VectorSlice = Word32VectorSlice)

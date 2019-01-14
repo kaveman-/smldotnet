@@ -1,0 +1,2 @@
+call smlnet Primes
+

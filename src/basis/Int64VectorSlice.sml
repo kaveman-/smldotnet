@@ -1,0 +1,1 @@
+structure Int64VectorSlice = VectorSliceFun_(type elem = Int64.int)

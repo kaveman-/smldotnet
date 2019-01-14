@@ -1,0 +1,1 @@
+structure CharArray = ArrayFun_(structure Vector = CharVector)

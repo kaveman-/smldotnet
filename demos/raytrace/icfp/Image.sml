@@ -1,0 +1,1 @@
+structure Image : Image = Ppm

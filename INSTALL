@@ -1,0 +1,26 @@
+INSTALLING SML.NET
+------------------
+
+These instructions are the absolute minimum for setting up SML.NET
+from binaries. Requirements:
+
+* Microsoft.NET Framework Redist or SDK.
+
+Unpack the distribution. Then:
+
+(1) (On Windows 98 or ME) Set SMLNETPATH to the compiler directory
+(e.g. C:\smlnet) 
+
+(2) (Optional) Extend your path with the compiler binaries directory
+(e.g. C:\smlnet\bin) 
+
+That's it!
+
+The "smlnet" (ie. C:\smlnet\bin\smlnet.bat) command starts up the
+compiler. Test the compiler from the smlnet directory by entering the
+following commands from within the compilation environment:
+  
+source demos\sort
+export Sort
+make 
+run

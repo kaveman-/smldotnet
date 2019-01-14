@@ -1,0 +1,1 @@
+structure Real64ArraySlice = ArraySliceFun_(structure VectorSlice = Real64VectorSlice)

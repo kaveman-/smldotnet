@@ -1,0 +1,10 @@
+reference System.XML
+source .
+functor XQueryLrValsFun=xquery.grm.sml,
+ XQueryLexFun=xquery.lex.sml
+signature XQuery_LRVALS=xquery.grm.sig,
+ XQuery_TOKENS=xquery.grm.sig
+@..\..\lib\parsing\sources
+out bin\Xqlib.dll
+export Xqlib
+make

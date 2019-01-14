@@ -1,0 +1,57 @@
+Group (*Library
+   structure Parse (* What you call *)
+   signature PARSE
+
+   structure Syntax (* Syntax tree *)
+   structure SCon (* Format of constants *)
+   structure Error (* Framework for error messages *)
+   signature ERROR
+
+   structure FilePosition (* Position type *)
+   signature POSITION   
+
+   structure PrintLoc (* For printing positions and locations *)
+   signature PRINTLOC
+
+   structure SourceMap (* For decoding positions and locations *)
+   signature SOURCE_MAP
+
+   signature LR_PARSER*)
+is
+   $/smlnj-lib.cm
+   $/ml-yacc-lib.cm (* ML-Yacc library *)
+   $/basis.cm
+   ../../common/sources.cm (* Used for SCons *)
+   ../../gen/sources.cm
+   
+   Parse.sml
+   PARSE.sig
+
+   Syntax.sml (* the AST *)
+
+   TokenTable.sml (* Translates reserved words *)
+   TOKENTABLE.sig
+
+   SourceMap.sml (* Compresses line/col data into a character count *)
+   SOURCE_MAP.sig
+
+   SCon.sml (* Type for constants *)
+
+   ERROR.sig (* Error handling *)
+   Error.sml 
+
+   LEXSTATE.sig (* File state for the lexer *)
+   LexState.sml
+
+   ml.grm
+   ml.lex
+
+   MLLrVals.sml
+   MLLex.sml
+   MLParser.sml
+ 
+   POSITION.sig
+   FilePosition.sml
+
+   PRINTLOC.sig
+   PrintLoc.sml

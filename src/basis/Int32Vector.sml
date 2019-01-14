@@ -1,0 +1,1 @@
+structure Int32Vector = VectorFun_(type elem = Int32.int)

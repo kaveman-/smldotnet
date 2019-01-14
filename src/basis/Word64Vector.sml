@@ -1,0 +1,1 @@
+structure Word64Vector = VectorFun_(type elem = Word64.word)

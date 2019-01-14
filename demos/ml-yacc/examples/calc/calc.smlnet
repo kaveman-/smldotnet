@@ -1,0 +1,9 @@
+source .
+functor CalcLrValsFun=calc.grm.sml,
+ CalcLexFun=calc.lex.sml
+signature Calc_LRVALS=calc.grm.sig,
+ Calc_TOKENS=calc.grm.sig
+@..\..\..\..\lib\parsing\sources
+out calc.exe
+export Calc
+make

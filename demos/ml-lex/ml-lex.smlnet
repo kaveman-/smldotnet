@@ -1,0 +1,6 @@
+functor RedBlack = lexgen.sml
+signature LEXGEN = lexgen.sml
+structure LexGen = lexgen.sml
+out ml-lex.exe
+export mllex
+make

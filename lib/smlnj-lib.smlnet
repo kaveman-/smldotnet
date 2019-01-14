@@ -1,0 +1,18 @@
+structure IntBinarySet=int-binary-set.sml, IntBinaryMap=int-binary-map.sml,
+  ListMergeSort=list-mergesort.sml, LibBase=lib-base.sml,
+  HashString=hash-string.sml, HashTableRep=hash-table-rep.sml,
+  IntRedBlackMap=int-redblack-map.sml, IntRedBlackSet=int-redblack-set.sml,
+  SplayTree=splaytree.sml
+
+signature ORD_MAP=ord-map-sig.sml, HASH_KEY=hash-key-sig.sml, 
+  ORD_SET=ord-set-sig.sml, ORD_KEY=ord-key-sig.sml, SPLAY_TREE=splaytree-sig.sml,
+  LIB_BASE=lib-base-sig.sml, LIST_SORT=listsort-sig.sml, 
+  MONO_HASH_TABLE=mono-hash-table-sig.sml, 
+  MONO_DYNAMIC_ARRAY=mono-dynamic-array-sig.sml
+
+functor SplaySetFn=splay-set-fn.sml, SplayMapFn=splay-map-fn.sml,
+  HashTableFn=hash-table-fn.sml, MonoArrayFn=mono-array-fn.sml,
+  DynamicArrayFn=dynamic-array-fn.sml, 
+  RedBlackMapFn=redblack-map-fn.sml,
+  RedBlackSetFn=redblack-set-fn.sml
+

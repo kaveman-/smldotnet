@@ -1,0 +1,1 @@
+structure Int32Array = ArrayFun_(structure Vector = Int32Vector)

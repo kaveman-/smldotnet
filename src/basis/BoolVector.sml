@@ -1,0 +1,1 @@
+structure BoolVector = VectorFun_(type elem = Bool.bool)

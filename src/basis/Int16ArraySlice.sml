@@ -1,0 +1,1 @@
+structure Int16ArraySlice = ArraySliceFun_(structure VectorSlice = Int16VectorSlice)

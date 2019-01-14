@@ -1,0 +1,57 @@
+Group is
+
+(*----------------------------------------------------------------------*)
+(* SML/NJ library							*)
+(*----------------------------------------------------------------------*)
+$/basis.cm
+$/smlnj-lib.cm
+../common/graph/sources.cm
+../common/arrays/sources.cm
+
+(*----------------------------------------------------------------------*)
+(* Generally useful ADTs          					*)
+(*----------------------------------------------------------------------*)
+DEP.sig
+Dep.sml
+Dups.sml
+EQ.sig
+Eq.sml
+Gen.sml
+
+IntMap.sml
+IntSet.sml
+StringMap.sml
+StringSet.sml
+MapFn.sml
+SetFn.sml
+DynIntArray.sml
+DARRAY.sig
+
+ListOps.sml
+OptionOps.sml
+COMPARE.sig
+Compare.sml
+
+TREELIST.sig
+TreeList.sml
+
+QuickSort.sml
+
+PRETTY.sig
+Pretty.sml
+
+NEWPRETTY.sig
+NewPretty.sml
+
+(*----------------------------------------------------------------------*)
+(* File name conversions                                                *)
+(*----------------------------------------------------------------------*)
+../clr/PATHCONV.sig
+../clr/PathConv.sml
+
+FileOps.sml
+Result.sml
+(*
+NAMES.sig
+Names.sml
+*)

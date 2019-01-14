@@ -1,0 +1,1 @@
+structure WordArray = Word32Array

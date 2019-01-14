@@ -1,0 +1,1 @@
+structure Int8ArraySlice = ArraySliceFun_(structure VectorSlice = Int8VectorSlice)

@@ -1,0 +1,1 @@
+structure Real64Vector = VectorFun_(type elem = Real64.real)
